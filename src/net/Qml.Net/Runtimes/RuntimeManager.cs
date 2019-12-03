@@ -26,6 +26,8 @@ namespace Qml.Net.Runtimes
                     return "win-x64";
                 case RuntimeTarget.LinuxX64:
                     return "linux-x64";
+                case RuntimeTarget.LinuxArm:
+                    return "linux-arm";
                 case RuntimeTarget.OSX64:
                     return "osx-x64";
                 case RuntimeTarget.Unsupported:
@@ -46,6 +48,10 @@ namespace Qml.Net.Runtimes
         {
             if (IntPtr.Size != 8)
             {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return RuntimeTarget.LinuxArm;
+                }
                 return RuntimeTarget.Unsupported;
             }
 
