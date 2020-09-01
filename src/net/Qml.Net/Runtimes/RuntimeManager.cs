@@ -16,7 +16,14 @@ namespace Qml.Net.Runtimes
         // ReSharper disable once MemberCanBePrivate.Global
         // ReSharper disable once FieldCanBeMadeReadOnly.Global
         public static BuildRuntimeUrlDelegate BuildRuntimeUrl = (qtVersion, target)
-            => $"https://github.com/qmlnet/qt-runtimes/releases/download/releases/{qtVersion}-{RuntimeTargetToString(target)}-runtime.tar.gz";
+            =>
+        {
+            if (target == RuntimeTarget.Unsupported)
+                throw new Exception("Unsupported runtime target");
+                
+            var targetString = RuntimeTargetToString(target);
+            return $"https://github.com/qmlnet/qt-runtimes/releases/download/releases/{qtVersion}-{targetString}-runtime.tar.gz";
+        };
 
         private static string RuntimeTargetToString(RuntimeTarget target)
         {
@@ -26,12 +33,10 @@ namespace Qml.Net.Runtimes
                     return "win-x64";
                 case RuntimeTarget.LinuxX64:
                     return "linux-x64";
-                case RuntimeTarget.LinuxArm:
-                    return "linux-arm";
                 case RuntimeTarget.OSX64:
                     return "osx-x64";
                 case RuntimeTarget.Unsupported:
-                    throw new Exception("Unsupported target");
+                    return "unsupported";
                 default:
                     throw new Exception($"Unknown target {target}");
             }
@@ -48,10 +53,6 @@ namespace Qml.Net.Runtimes
         {
             if (IntPtr.Size != 8)
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    return RuntimeTarget.LinuxArm;
-                }
                 return RuntimeTarget.Unsupported;
             }
 
@@ -142,6 +143,9 @@ namespace Qml.Net.Runtimes
             }
 
             var currentTarget = GetCurrentRuntimeTarget();
+            if (currentTarget == RuntimeTarget.Unsupported)
+                throw new Exception("Can not automatically discover or download qt runtime for Unsupported target");
+            
             var version = $"{QmlNetConfig.QtBuildVersion}-{RuntimeTargetToString(currentTarget)}";
 
             // Let's try to download and install the Qt runtime into the users directory.

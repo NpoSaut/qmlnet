@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -61,6 +62,8 @@ namespace Qml.Net.Runtimes
 
         public static string FindQtRuntime(string[] runtimeDirectories, string qtVersion, RuntimeTarget target)
         {
+            Contract.Assert(target != RuntimeTarget.Unsupported, "Can't find QT Runtime for unsupported targget");
+            
             if (runtimeDirectories.Length == 0)
             {
                 return null;
