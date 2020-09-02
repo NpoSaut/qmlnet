@@ -124,12 +124,13 @@ namespace Qml.Net.Runtimes
         /// <param name="libDirectory">Directory where QT library binaries are located</param>
         /// <param name="qmlDirectory">QML directory</param>
         /// <param name="pluginsDirectory">QT plugins directory</param>
+        /// <param name="preloadFilePath">Preload.txt file placement</param>
         /// <example>
         ///     For Windows it would be like:
         ///     <code>RuntimeManager.ConfigureRuntimeDirectory("path_to_qt/bin", "path_to_qt/qml", "path_to_qt/plugins");</code>
         ///     For Linux: <code>RuntimeManager.ConfigureRuntimeDirectory("/usr/lib", "/usr/qml/", "/usr/lib/qt/plugins/");</code>
         /// </example>
-        public static void ConfigureRuntimeDirectory(string libDirectory, string qmlDirectory, string pluginsDirectory)
+        public static void ConfigureRuntimeDirectory(string libDirectory, string qmlDirectory, string pluginsDirectory, string preloadFilePath)
         {
             if (!Directory.Exists(pluginsDirectory))
                 throw new Exception($"Plugins directory didn't exist: {pluginsDirectory}");
@@ -140,10 +141,10 @@ namespace Qml.Net.Runtimes
 
             if (!Directory.Exists(libDirectory)) throw new Exception($"The lib directory didn't exist: {libDirectory}");
 
-            var preloadPath = "preload.txt";
-            if (!File.Exists(preloadPath)) throw new Exception($"The preload.txt file didn't exist: {preloadPath}");
+            if (!File.Exists(preloadFilePath)) throw new Exception($"The preload.txt file didn't exist: {preloadFilePath}");
 
-            var libsToPreload = File.ReadAllLines(preloadPath).Where(x => !string.IsNullOrEmpty(x))
+            var libsToPreload = File.ReadAllLines(preloadFilePath)
+                                    .Where(x => !string.IsNullOrEmpty(x))
                                     .Select(x => Path.Combine(libDirectory, x))
                                     .ToList();
             var platformLoader = PlatformLoaderBase.SelectPlatformLoader();
