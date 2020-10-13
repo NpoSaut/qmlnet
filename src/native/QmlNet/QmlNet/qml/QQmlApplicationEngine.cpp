@@ -4,6 +4,7 @@
 #include <QmlNet/types/Callbacks.h>
 #include <QmlNet/qml/JsNetObject.h>
 #include <QQmlContext>
+#include <QAtomicInt>
 
 static QQmlApplicationEngine* sharedQmlEngineValue = nullptr;
 
@@ -16,7 +17,7 @@ QQmlApplicationEngine* sharedQmlEngine()
     return sharedQmlEngineValue;
 }
 
-static int netValueTypeNumber = 0;
+static QAtomicInt netValueTypeNumber;
 
 #define NETVALUETYPE_CASE(N) \
     case N: NetValueType<N>::init(typeInfo); return qmlRegisterType<NetValueType<(N)>>(uriString.toUtf8().data(), versionMajor, versionMinor, qmlNameString.toUtf8().data());
@@ -60,18 +61,18 @@ Q_DECL_EXPORT void qqmlapplicationengine_destroy(QQmlApplicationEngineContainer*
     delete container;
 }
 
-Q_DECL_EXPORT void qqmlapplicationengine_load(QQmlApplicationEngineContainer* container, LPWSTR path) {
-    container->qmlEngine->load(QString::fromUtf16(static_cast<const char16_t*>(path)));
+Q_DECL_EXPORT void qqmlapplicationengine_load(QQmlApplicationEngineContainer* container, QChar* path) {
+    container->qmlEngine->load(QString(path));
 }
 
-Q_DECL_EXPORT void qqmlapplicationengine_loadData(QQmlApplicationEngineContainer* container, LPWSTR dataString) {
-    container->qmlEngine->loadData(QByteArray::fromStdString(QString::fromUtf16(static_cast<const char16_t*>(dataString)).toStdString()));
+Q_DECL_EXPORT void qqmlapplicationengine_loadData(QQmlApplicationEngineContainer* container, QChar* dataString) {
+    container->qmlEngine->loadData(QByteArray::fromStdString(QString(dataString).toStdString()));
 }
 
-Q_DECL_EXPORT int qqmlapplicationengine_registerType(NetTypeInfoContainer* typeContainer, LPWSTR uri, int versionMajor, int versionMinor, LPWSTR qmlName) {
+Q_DECL_EXPORT int qqmlapplicationengine_registerType(NetTypeInfoContainer* typeContainer, QChar* uri, int versionMajor, int versionMinor, QChar* qmlName) {
 
-    QString uriString = QString::fromUtf16(static_cast<const char16_t*>(uri));
-    QString qmlNameString = QString::fromUtf16(static_cast<const char16_t*>(qmlName));
+    QString uriString(uri);
+    QString qmlNameString(qmlName);
     QSharedPointer<NetTypeInfo> typeInfo = typeContainer->netTypeInfo;
 
     switch (++netValueTypeNumber) {
@@ -245,24 +246,54 @@ Q_DECL_EXPORT int qqmlapplicationengine_registerType(NetTypeInfoContainer* typeC
         NETVALUETYPE_CASE(168)
         NETVALUETYPE_CASE(169)
         NETVALUETYPE_CASE(170)
+        NETVALUETYPE_CASE(171)
+        NETVALUETYPE_CASE(172)
+        NETVALUETYPE_CASE(173)
+        NETVALUETYPE_CASE(174)
+        NETVALUETYPE_CASE(175)
+        NETVALUETYPE_CASE(176)
+        NETVALUETYPE_CASE(177)
+        NETVALUETYPE_CASE(178)
+        NETVALUETYPE_CASE(179)
+        NETVALUETYPE_CASE(180)
+        NETVALUETYPE_CASE(181)
+        NETVALUETYPE_CASE(182)
+        NETVALUETYPE_CASE(183)
+        NETVALUETYPE_CASE(184)
+        NETVALUETYPE_CASE(185)
+        NETVALUETYPE_CASE(186)
+        NETVALUETYPE_CASE(187)
+        NETVALUETYPE_CASE(188)
+        NETVALUETYPE_CASE(189)
+        NETVALUETYPE_CASE(190)
+        NETVALUETYPE_CASE(191)
+        NETVALUETYPE_CASE(192)
+        NETVALUETYPE_CASE(193)
+        NETVALUETYPE_CASE(194)
+        NETVALUETYPE_CASE(195)
+        NETVALUETYPE_CASE(196)
+        NETVALUETYPE_CASE(197)
+        NETVALUETYPE_CASE(198)
+        NETVALUETYPE_CASE(199)
+        NETVALUETYPE_CASE(200)
     }
-    qFatal("Too many registered types: %d", netValueTypeNumber);
+    qFatal("Too many registered types: %d", static_cast<int>(netValueTypeNumber));
     return -1;
 }
 
-Q_DECL_EXPORT int qqmlapplicationengine_registerSingletonTypeQml(LPWCSTR url, LPWCSTR uri, int versionMajor, int versionMinor, LPWCSTR qmlName)
+Q_DECL_EXPORT int qqmlapplicationengine_registerSingletonTypeQml(const QChar* url, const QChar* uri, int versionMajor, int versionMinor, const QChar* qmlName)
 {
-    QString urlString = QString::fromUtf16(url);
-    QString uriString = QString::fromUtf16(uri);
-    QString qmlNameString = QString::fromUtf16(qmlName);
+    QString urlString(url);
+    QString uriString(uri);
+    QString qmlNameString(qmlName);
     return qmlRegisterSingletonType(urlString, uriString.toUtf8().data(), versionMajor, versionMinor, qmlNameString.toUtf8().data());
 }
 
-Q_DECL_EXPORT int qqmlapplicationengine_registerSingletonTypeNet(NetTypeInfoContainer* typeContainer, LPWCSTR uri, int versionMajor, int versionMinor, LPWCSTR typeName)
+Q_DECL_EXPORT int qqmlapplicationengine_registerSingletonTypeNet(NetTypeInfoContainer* typeContainer, const QChar* uri, int versionMajor, int versionMinor, const QChar* typeName)
 {
     QSharedPointer<NetTypeInfo> typeInfo = typeContainer->netTypeInfo;
-    QString typeNameString = QString::fromUtf16(typeName);
-    QString uriString = QString::fromUtf16(uri);
+    QString typeNameString(typeName);
+    QString uriString(uri);
 
     switch (++netValueTypeNumber) {
         NETVALUETYPESINGLETON_CASE(1)
@@ -435,13 +466,43 @@ Q_DECL_EXPORT int qqmlapplicationengine_registerSingletonTypeNet(NetTypeInfoCont
         NETVALUETYPESINGLETON_CASE(168)
         NETVALUETYPESINGLETON_CASE(169)
         NETVALUETYPESINGLETON_CASE(170)
+        NETVALUETYPESINGLETON_CASE(171)
+        NETVALUETYPESINGLETON_CASE(172)
+        NETVALUETYPESINGLETON_CASE(173)
+        NETVALUETYPESINGLETON_CASE(174)
+        NETVALUETYPESINGLETON_CASE(175)
+        NETVALUETYPESINGLETON_CASE(176)
+        NETVALUETYPESINGLETON_CASE(177)
+        NETVALUETYPESINGLETON_CASE(178)
+        NETVALUETYPESINGLETON_CASE(179)
+        NETVALUETYPESINGLETON_CASE(180)
+        NETVALUETYPESINGLETON_CASE(181)
+        NETVALUETYPESINGLETON_CASE(182)
+        NETVALUETYPESINGLETON_CASE(183)
+        NETVALUETYPESINGLETON_CASE(184)
+        NETVALUETYPESINGLETON_CASE(185)
+        NETVALUETYPESINGLETON_CASE(186)
+        NETVALUETYPESINGLETON_CASE(187)
+        NETVALUETYPESINGLETON_CASE(188)
+        NETVALUETYPESINGLETON_CASE(189)
+        NETVALUETYPESINGLETON_CASE(190)
+        NETVALUETYPESINGLETON_CASE(191)
+        NETVALUETYPESINGLETON_CASE(192)
+        NETVALUETYPESINGLETON_CASE(193)
+        NETVALUETYPESINGLETON_CASE(194)
+        NETVALUETYPESINGLETON_CASE(195)
+        NETVALUETYPESINGLETON_CASE(196)
+        NETVALUETYPESINGLETON_CASE(197)
+        NETVALUETYPESINGLETON_CASE(198)
+        NETVALUETYPESINGLETON_CASE(199)
+        NETVALUETYPESINGLETON_CASE(200)
     }
-    qFatal("Too many registered types: %d", netValueTypeNumber);
+    qFatal("Too many registered types: %d", static_cast<int>(netValueTypeNumber));
     return -1;
 }
 
-Q_DECL_EXPORT void qqmlapplicationengine_addImportPath(QQmlApplicationEngineContainer* container, LPWSTR path) {
-    QString pathString = QString::fromUtf16(static_cast<const char16_t*>(path));
+Q_DECL_EXPORT void qqmlapplicationengine_addImportPath(QQmlApplicationEngineContainer* container, QChar* path) {
+    QString pathString = QString(path);
     container->qmlEngine->addImportPath(pathString);
 }
 
@@ -449,21 +510,21 @@ Q_DECL_EXPORT QQmlApplicationEngine* qqmlapplicationengine_internalPointer(QQmlA
     return container->qmlEngine;
 }
 
-Q_DECL_EXPORT NetVariantContainer* qqmlapplicationengine_getContextProperty(QQmlApplicationEngineContainer* container, LPWCSTR name)
+Q_DECL_EXPORT NetVariantContainer* qqmlapplicationengine_getContextProperty(QQmlApplicationEngineContainer* container, const QChar* name)
 {
-    QVariant result = container->qmlEngine->rootContext()->contextProperty(QString::fromUtf16(name));
+    QVariant result = container->qmlEngine->rootContext()->contextProperty(QString(name));
     return new NetVariantContainer {
         NetVariant::fromQVariant(&result)
     };
 }
 
-Q_DECL_EXPORT void qqmlapplicationengine_setContextProperty(QQmlApplicationEngineContainer* container, LPWCSTR name, NetVariantContainer* valueContainer)
+Q_DECL_EXPORT void qqmlapplicationengine_setContextProperty(QQmlApplicationEngineContainer* container, const QChar* name, NetVariantContainer* valueContainer)
 {
     if(valueContainer == nullptr) {
-        container->qmlEngine->rootContext()->setContextProperty(QString::fromUtf16(name), nullptr);
+        container->qmlEngine->rootContext()->setContextProperty(QString(name), nullptr);
     } else {
         QSharedPointer<NetVariant> value = valueContainer->variant;
-        container->qmlEngine->rootContext()->setContextProperty(QString::fromUtf16(name), value->toQVariant());
+        container->qmlEngine->rootContext()->setContextProperty(QString(name), value->toQVariant());
     }
 }
 

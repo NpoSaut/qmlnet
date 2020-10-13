@@ -1,14 +1,24 @@
 #include <QmlNet/qml/NetTestHelper.h>
 #include <QQmlComponent>
 #include <QDebug>
+#include <QCoreApplication>
+
+TestBaseQObject::TestBaseQObject()
+    : QObject(nullptr)
+{
+
+}
+
+TestBaseQObject::~TestBaseQObject()
+{
+
+}
 
 TestQObject::TestQObject()
-    : QObject(nullptr),
-    _writeOnly(0),
+    : _writeOnly(0),
     _readAndWrite(0),
     _propWithSignal(0)
 {
-
 }
 
 TestQObject::~TestQObject()
@@ -141,6 +151,24 @@ QObject* TestQObject::testSlotQObject(QObject* value)
     return value;
 }
 
+TestBaseQObject* TestQObject::testSlotTypedBaseQObject(TestBaseQObject* value)
+{
+    emit testSignalTypedBaseQObject(value);
+    return value;
+}
+
+TestQObject* TestQObject::testSlotTypedQObject(TestQObject* value)
+{
+    emit testSignalTypedQObject(value);
+    return value;
+}
+
+TestDerivedQObject* TestQObject::testSlotTypedDerivedQObject(TestDerivedQObject* value)
+{
+    emit testSignalTypedDerivedQObject(value);
+    return value;
+}
+
 qint32 TestQObject::testSlotQInt32(qint32 value)
 {
     emit testSignalQInt32(value);
@@ -165,25 +193,63 @@ quint64 TestQObject::testSlotQUInt64(quint64 value)
     return value;
 }
 
+QVariantList TestQObject::testSlotQVariantList(QVariantList variantList)
+{
+    emit testSignalQVariantList(variantList);
+    return variantList;
+}
+
+TestDerivedQObject::TestDerivedQObject()
+{
+}
+
+TestDerivedQObject::~TestDerivedQObject()
+{
+
+}
+
 extern "C" {
 
-Q_DECL_EXPORT void net_test_helper_runQml(QQmlApplicationEngineContainer* qmlEngineContainer, LPWSTR qml) {
+using WarningCallback = void(const QChar*);
+
+Q_DECL_EXPORT uchar net_test_helper_runQml(QQmlApplicationEngineContainer* qmlEngineContainer, QChar* qml, uchar runEvents, WarningCallback *warningCallback)
+{
+    qRegisterMetaType<TestBaseQObject*>();
+    qRegisterMetaType<TestQObject*>();
+    qRegisterMetaType<TestDerivedQObject*>();
+
+    // Temporarily connect to QQmlEngine::warnings
+    auto connection = QObject::connect(qmlEngineContainer->qmlEngine, &QQmlEngine::warnings, [=](const QList<QQmlError> &warnings) {
+        for (const auto &qmlError : warnings) {
+            warningCallback(qmlError.toString().data());
+        }
+    });
+
     QQmlComponent component(qmlEngineContainer->qmlEngine);
-    QString qmlString = QString::fromUtf16(static_cast<const char16_t*>(qml));
+    QString qmlString(qml);
     component.setData(qmlString.toUtf8(), QUrl());
 
     QObject *object = component.create();
 
     if(object == nullptr) {
+        QObject::disconnect(connection);
         qWarning() << "Couldn't create qml object.";
-        return;
+        return 0;
     }
 
     QSharedPointer<TestQObject> testQObject = QSharedPointer<TestQObject>(new TestQObject());
     object->setProperty("testQObject", QVariant::fromValue(testQObject.data()));
     QMetaObject::invokeMethod(object, "runTest");
 
+    if(runEvents == 1) {
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
+    }
+
     delete object;
+
+    QObject::disconnect(connection);
+    return 1;
 }
 
 }

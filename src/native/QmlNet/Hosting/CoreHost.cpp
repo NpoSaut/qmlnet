@@ -22,7 +22,7 @@ static QString nativeModule;
 
 static void* getExportedFunction(const char* symbolName) {
 #ifdef _WIN32
-    HMODULE library = GetModuleHandle(nativeModule.isNull() || nativeModule.isEmpty() ? nullptr
+    HMODULE library = GetModuleHandleA(nativeModule.isNull() || nativeModule.isEmpty() ? nullptr
                                                                                      : nativeModule.toLocal8Bit());
     FARPROC symbol = GetProcAddress(library, symbolName);
     return (void*)symbol;
@@ -143,14 +143,14 @@ int CoreHost::run(QGuiApplication& app, QQmlApplicationEngine& engine, runCallba
     execArgs.push_back("exec");
     execArgs.push_back(runContext.managedExe);
 
-    QString appPtr;
-    appPtr.sprintf("%llu", (quintptr)&app);
-    QString enginePtr;
-    enginePtr.sprintf("%llu", (quintptr)&engine);
-    QString callbackPtr;
-    callbackPtr.sprintf("%llu", (quintptr)runCallback);
-    QString exportedSymbolPointer;
-    exportedSymbolPointer.sprintf("%llu", (quintptr)getExportedFunction);
+    auto appPtr = QString::number((qintptr)&app);
+    auto enginePtr = QString::number((quintptr)&engine);
+    auto callbackPtr = QString::number((quintptr)runCallback);
+    auto exportedSymbolPointer = QString::number((quintptr)&getExportedFunction);
+
+    for (QString arg : runContext.argsPreAppend) {
+        execArgs.push_back(arg);
+    }
 
     execArgs.push_back(appPtr);
     execArgs.push_back(enginePtr);

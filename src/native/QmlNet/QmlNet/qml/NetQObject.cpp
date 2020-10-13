@@ -17,6 +17,7 @@ NetQObject::~NetQObject()
 {
     if(_ownsObject) {
         _qObject->deleteLater();
+        _qObject = nullptr;
     }
 }
 
@@ -73,7 +74,7 @@ QSharedPointer<NetVariant> NetQObject::invokeMethod(QString methodName, QSharedP
     QMetaMethod method;
     for(int x = 0; x < _qObject->metaObject()->methodCount(); x++) {
         method = _qObject->metaObject()->method(x);
-        if(method.methodType() == QMetaMethod::Slot || method.methodType() == QMetaMethod::Method) {
+        if(method.methodType() == QMetaMethod::Slot || method.methodType() == QMetaMethod::Method || method.methodType() == QMetaMethod::Signal) {
             if(methodName.compare(method.name()) == 0) {
                 // make sure number of parameters match
                 if(method.parameterCount() == parameterCount) {
@@ -99,7 +100,16 @@ QSharedPointer<NetVariant> NetQObject::invokeMethod(QString methodName, QSharedP
         return nullptr;
     }
 
-    NetQObjectArg returnValue(method.returnType());
+    int returnType = method.returnType();
+    if(returnType == QMetaType::UnknownType) {
+        qWarning() << "Unable to return type" << method.typeName() << ", it wasn't registered with the meta object system";
+        if(wasSuccess) {
+            *wasSuccess = false;
+        }
+        return nullptr;
+    }
+
+    NetQObjectArg returnValue(returnType);
     NetQObjectArg val0;
     NetQObjectArg val1;
     NetQObjectArg val2;
@@ -115,31 +125,31 @@ QSharedPointer<NetVariant> NetQObject::invokeMethod(QString methodName, QSharedP
         val0 = NetQObjectArg(method.parameterType(0), parameters->get(0));
     }
     if(parameterCount >= 2) {
-        val0 = NetQObjectArg(method.parameterType(1), parameters->get(1));
+        val1 = NetQObjectArg(method.parameterType(1), parameters->get(1));
     }
     if(parameterCount >= 3) {
-        val0 = NetQObjectArg(method.parameterType(2), parameters->get(2));
+        val2 = NetQObjectArg(method.parameterType(2), parameters->get(2));
     }
     if(parameterCount >= 4) {
-        val0 = NetQObjectArg(method.parameterType(3), parameters->get(3));
+        val3 = NetQObjectArg(method.parameterType(3), parameters->get(3));
     }
     if(parameterCount >= 5) {
-        val0 = NetQObjectArg(method.parameterType(4), parameters->get(4));
+        val4 = NetQObjectArg(method.parameterType(4), parameters->get(4));
     }
     if(parameterCount >= 6) {
-        val0 = NetQObjectArg(method.parameterType(5), parameters->get(5));
+        val5 = NetQObjectArg(method.parameterType(5), parameters->get(5));
     }
     if(parameterCount >= 7) {
-        val0 = NetQObjectArg(method.parameterType(6), parameters->get(6));
+        val6 = NetQObjectArg(method.parameterType(6), parameters->get(6));
     }
     if(parameterCount >= 8) {
-        val0 = NetQObjectArg(method.parameterType(7), parameters->get(7));
+        val7 = NetQObjectArg(method.parameterType(7), parameters->get(7));
     }
     if(parameterCount >= 9) {
-        val0 = NetQObjectArg(method.parameterType(8), parameters->get(8));
+        val8 = NetQObjectArg(method.parameterType(8), parameters->get(8));
     }
     if(parameterCount >= 10) {
-        val0 = NetQObjectArg(method.parameterType(9), parameters->get(9));
+        val9 = NetQObjectArg(method.parameterType(9), parameters->get(9));
     }
 
     if(!method.invoke(_qObject,
@@ -250,6 +260,36 @@ QSharedPointer<NetQObjectSignalConnection> NetQObject::attachNotifySignal(QStrin
     return signalConnection;
 }
 
+QSharedPointer<NetQObject> NetQObject::buildQObject(QString className, QSharedPointer<NetVariantList> constructorParameters)
+{
+    int typeId = QMetaType::type(className.toLocal8Bit().data());
+    if(typeId == QMetaType::UnknownType) {
+        qWarning() << "The class" << className << "isn't known to the meta type system.";
+        return nullptr;
+    }
+    if((QMetaType::typeFlags(typeId) & QMetaType::PointerToQObject) == 0) {
+        qWarning() << "The type" << className << "isn't a pointer to a QObject.";
+        return nullptr;
+    }
+
+    if(constructorParameters != nullptr) {
+        if(constructorParameters->count() > 0) {
+            qWarning() << "Support for contstructor parameters isn't supported yet.";
+            return nullptr;
+        }
+    }
+
+    const QMetaObject* metaObject = QMetaType::metaObjectForType(typeId);
+    QObject* result = metaObject->newInstance();
+
+    if(result == nullptr) {
+        qWarning() << "Couldn't create instance of" << className;
+        return nullptr;
+    }
+
+    return QSharedPointer<NetQObject>(new NetQObject(result, true));
+}
+
 extern "C" {
 
 Q_DECL_EXPORT void net_qobject_destroy(NetQObjectContainer* qObjectContainer)
@@ -257,10 +297,10 @@ Q_DECL_EXPORT void net_qobject_destroy(NetQObjectContainer* qObjectContainer)
     delete qObjectContainer;
 }
 
-Q_DECL_EXPORT NetVariantContainer* net_qobject_getProperty(NetQObjectContainer* qObjectContainer, LPWCSTR propertyName, uchar* result)
+Q_DECL_EXPORT NetVariantContainer* net_qobject_getProperty(NetQObjectContainer* qObjectContainer, const QChar* propertyName, uchar* result)
 {
     bool wasSuccesful = false;
-    auto value = qObjectContainer->qObject->getProperty(QString::fromUtf16(propertyName), &wasSuccesful);
+    auto value = qObjectContainer->qObject->getProperty(QString(propertyName), &wasSuccesful);
     if(wasSuccesful) {
         *result = 1;
     } else {
@@ -272,13 +312,13 @@ Q_DECL_EXPORT NetVariantContainer* net_qobject_getProperty(NetQObjectContainer* 
     return new NetVariantContainer{ value };
 }
 
-Q_DECL_EXPORT void net_qobject_setProperty(NetQObjectContainer* qObjectContainer, LPWCSTR propertyName, NetVariantContainer* netVariantContainer, uchar* result)
+Q_DECL_EXPORT void net_qobject_setProperty(NetQObjectContainer* qObjectContainer, const QChar* propertyName, NetVariantContainer* netVariantContainer, uchar* result)
 {
     bool wasSuccesful = false;
     if(netVariantContainer == nullptr) {
-        qObjectContainer->qObject->setProperty(QString::fromUtf16(propertyName), nullptr, &wasSuccesful);
+        qObjectContainer->qObject->setProperty(QString(propertyName), nullptr, &wasSuccesful);
     } else {
-        qObjectContainer->qObject->setProperty(QString::fromUtf16(propertyName), netVariantContainer->variant, &wasSuccesful);
+        qObjectContainer->qObject->setProperty(QString(propertyName), netVariantContainer->variant, &wasSuccesful);
     }
     if(wasSuccesful) {
         *result = 1;
@@ -287,14 +327,14 @@ Q_DECL_EXPORT void net_qobject_setProperty(NetQObjectContainer* qObjectContainer
     }
 }
 
-Q_DECL_EXPORT NetVariantContainer* net_qobject_invokeMethod(NetQObjectContainer* qObjectContainer, LPWCSTR methodName, NetVariantListContainer* parametersContainer, uchar* result)
+Q_DECL_EXPORT NetVariantContainer* net_qobject_invokeMethod(NetQObjectContainer* qObjectContainer, const QChar* methodName, NetVariantListContainer* parametersContainer, uchar* result)
 {
     QSharedPointer<NetVariantList> parameters = nullptr;
     if(parametersContainer != nullptr) {
         parameters = parametersContainer->list;
     }
     bool wasSuccesful = false;
-    auto value = qObjectContainer->qObject->invokeMethod(QString::fromUtf16(methodName), parameters, &wasSuccesful);
+    auto value = qObjectContainer->qObject->invokeMethod(QString(methodName), parameters, &wasSuccesful);
     if(wasSuccesful) {
         *result = 1;
     } else {
@@ -306,10 +346,10 @@ Q_DECL_EXPORT NetVariantContainer* net_qobject_invokeMethod(NetQObjectContainer*
     return new NetVariantContainer { value };
 }
 
-Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachSignal(NetQObjectContainer* qObjectContainer, LPWCSTR signalName, NetReferenceContainer* delegate, uchar* result)
+Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachSignal(NetQObjectContainer* qObjectContainer, const QChar* signalName, NetReferenceContainer* delegate, uchar* result)
 {
     bool wasSuccesful = false;
-    auto signalConnection = qObjectContainer->qObject->attachSignal(QString::fromUtf16(signalName), delegate->instance, &wasSuccesful);
+    auto signalConnection = qObjectContainer->qObject->attachSignal(QString(signalName), delegate->instance, &wasSuccesful);
     if(wasSuccesful) {
         *result = 1;
     } else {
@@ -321,10 +361,10 @@ Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachSignal(NetQ
     return new NetQObjectSignalConnectionContainer { signalConnection };
 }
 
-Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachNotifySignal(NetQObjectContainer* qObjectContainer, LPWCSTR propertyName, NetReferenceContainer* delegate, uchar* result)
+Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachNotifySignal(NetQObjectContainer* qObjectContainer, const QChar* propertyName, NetReferenceContainer* delegate, uchar* result)
 {
     bool wasSuccesful = false;
-    auto signalConnection = qObjectContainer->qObject->attachNotifySignal(QString::fromUtf16(propertyName), delegate->instance, &wasSuccesful);
+    auto signalConnection = qObjectContainer->qObject->attachNotifySignal(QString(propertyName), delegate->instance, &wasSuccesful);
     if(wasSuccesful) {
         *result = 1;
     } else {
@@ -334,6 +374,19 @@ Q_DECL_EXPORT NetQObjectSignalConnectionContainer* net_qobject_attachNotifySigna
         return nullptr;
     }
     return new NetQObjectSignalConnectionContainer { signalConnection };
+}
+
+Q_DECL_EXPORT NetQObjectContainer* net_qobject_buildQObject(const QChar* className, NetVariantListContainer* constructorParameters)
+{
+    QSharedPointer<NetVariantList> params;
+    if(constructorParameters) {
+        params = constructorParameters->list;
+    }
+    QSharedPointer<NetQObject> result = NetQObject::buildQObject(QString(className), params);
+    if(result == nullptr) {
+        return nullptr;
+    }
+    return new NetQObjectContainer { result };
 }
 
 Q_DECL_EXPORT void net_qobject_signal_handler_destroy(NetQObjectSignalConnectionContainer* signalContainer)

@@ -1,10 +1,15 @@
 #include <QmlNet/qml/QCoreApplication.h>
 #include <QmlNet/qml/NetVariantList.h>
+#include <QmlNet/qml/NetQObject.h>
 #include <QGuiApplication>
-#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QmlNetUtilities.h>
 #include <QDebug>
+
+#if __has_include(<QApplication>)
+#define QMLNET_HAS_WIDGETS
+#include <QApplication>
+#endif
 
 GuiThreadContextTriggerCallback::GuiThreadContextTriggerCallback() :
     _callbacks(nullptr)
@@ -92,7 +97,11 @@ Q_DECL_EXPORT QGuiApplicationContainer* qapp_create(NetVariantListContainer* arg
         result->app = new QGuiApplication(result->argCount, &result->argsPointer[0], flags);
         break;
     case 2:
+#ifdef QMLNET_HAS_WIDGETS
         result->app = new QApplication(result->argCount, &result->argsPointer[0], flags);
+#else
+        qCritical("QtWidget support was disabled at compiletime");
+#endif
         break;
     default:
         qCritical("invalid app type %d", type);
@@ -131,9 +140,11 @@ Q_DECL_EXPORT int qapp_getType(QGuiApplicationContainer* container, QCoreApplica
     if(!rawPointer && container) {
         rawPointer = container->app;
     }
+#ifdef QMLNET_HAS_WIDGETS
     if (qobject_cast<QApplication*>(rawPointer) != nullptr){
         return 2;
     }
+#endif
     if (qobject_cast<QGuiApplication*>(rawPointer) != nullptr){
         return 1;
     }
@@ -176,9 +187,9 @@ Q_DECL_EXPORT QCoreApplication* qapp_internalPointer(QGuiApplicationContainer* c
     return container->app;
 }
 
-Q_DECL_EXPORT void qapp_setOrganizationName(LPWCSTR organizationName)
+Q_DECL_EXPORT void qapp_setOrganizationName(const QChar* organizationName)
 {
-    QCoreApplication::setOrganizationName(QString::fromUtf16(organizationName));
+    QCoreApplication::setOrganizationName(QString(organizationName));
 }
 
 Q_DECL_EXPORT QmlNetStringContainer* qapp_getOrganizationName()
@@ -186,9 +197,9 @@ Q_DECL_EXPORT QmlNetStringContainer* qapp_getOrganizationName()
     return createString(QCoreApplication::organizationName());
 }
 
-Q_DECL_EXPORT void qapp_setOrganizationDomain(LPWCSTR organizationDomain)
+Q_DECL_EXPORT void qapp_setOrganizationDomain(const QChar* organizationDomain)
 {
-    QCoreApplication::setOrganizationDomain(QString::fromUtf16(organizationDomain));
+    QCoreApplication::setOrganizationDomain(QString(organizationDomain));
 }
 
 Q_DECL_EXPORT QmlNetStringContainer* qapp_getOrganizationDomain()
@@ -207,6 +218,14 @@ Q_DECL_EXPORT uchar qapp_testAttribute(int attribute)
         return 1;
     } else {
         return 0;
+    }
+}
+
+Q_DECL_EXPORT void qapp_sendPostedEvents(NetQObjectContainer* netQObject, int eventType) {
+    if(netQObject == nullptr) {
+        QCoreApplication::sendPostedEvents(nullptr, eventType);
+    } else {
+        QCoreApplication::sendPostedEvents(netQObject->qObject->getQObject(), eventType);
     }
 }
 

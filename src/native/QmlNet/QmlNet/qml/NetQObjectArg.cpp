@@ -100,11 +100,53 @@ void NetQObjectArg::pack()
     case QMetaType::Double:
         _variant = QVariant::fromValue(_netVariant->getDouble());
         break;
+    case QMetaType::QSize:
+        _variant = QVariant::fromValue(_netVariant->getSize());
+        break;
+    case QMetaType::QSizeF:
+        _variant = QVariant::fromValue(_netVariant->getSizeF());
+        break;
+    case QMetaType::QRect:
+        _variant = QVariant::fromValue(_netVariant->getRect());
+        break;
+    case QMetaType::QRectF:
+        _variant = QVariant::fromValue(_netVariant->getRectF());
+        break;
+    case QMetaType::QPoint:
+        _variant = QVariant::fromValue(_netVariant->getPoint());
+        break;
+    case QMetaType::QPointF:
+        _variant = QVariant::fromValue(_netVariant->getPointF());
+        break;
+    case QMetaType::QVector2D:
+        _variant = QVariant::fromValue(_netVariant->getVector2D());
+        break;
+    case QMetaType::QVector3D:
+        _variant = QVariant::fromValue(_netVariant->getVector3D());
+        break;
+    case QMetaType::QVector4D:
+        _variant = QVariant::fromValue(_netVariant->getVector4D());
+        break;
+    case QMetaType::QQuaternion:
+        _variant = QVariant::fromValue(_netVariant->getQuaternion());
+        break;
+    case QMetaType::QMatrix4x4:
+        _variant = QVariant::fromValue(_netVariant->getMatrix4x4());
+        break;
+    case QMetaType::QColor:
+        _variant = QVariant::fromValue(_netVariant->getColor());
+        break;
     case QMetaType::QString:
         _variant = QVariant::fromValue(_netVariant->getString());
         break;
+    case QMetaType::QByteArray:
+        _variant = QVariant::fromValue(_netVariant->getBytes());
+        break;
     case QMetaType::QDateTime:
         _variant = QVariant::fromValue(_netVariant->getDateTime());
+        break;
+    case QMetaType::QVariantList:
+        _variant = QVariant::fromValue<QVariantList>(_netVariant->toQVariantList());
         break;
     case QMetaType::QObjectStar:
         switch(_netVariant->getVariantType()) {
@@ -121,6 +163,34 @@ void NetQObjectArg::pack()
         }
         break;
     default:
+        QMetaType::TypeFlags flags = QMetaType::typeFlags(_metaTypeId);
+        if(flags & QMetaType::PointerToQObject) {
+            // If the netvariant is a QObject and is of the same type,
+            // let's use it.
+            QVariant possibleQObjectVariant = _netVariant->toQVariant();
+            if(possibleQObjectVariant.userType() == QMetaType::QObjectStar) {
+                QObject* value = possibleQObjectVariant.value<QObject*>();
+                if(value == nullptr) {
+                    _variant = QVariant(_metaTypeId, nullptr);
+                    break;
+                }
+
+                const QMetaObject* targetMetaObject = QMetaType::metaObjectForType(_metaTypeId);
+
+                QObject* casted = targetMetaObject->cast(value);
+
+                if(casted == nullptr) {
+                    qWarning() << "Can't convert " << value->metaObject()->className() << "to" << QMetaType::typeName(_metaTypeId);
+                    _variant = QVariant(_metaTypeId, nullptr);
+                    break;
+                }
+
+                _variant = QVariant::fromValue(casted);
+
+                break;
+            }
+        }
+
         qWarning() << "Unsupported type: " << QMetaType::typeName(_metaTypeId);
         _variant = QVariant(_metaTypeId, nullptr);
         break;
