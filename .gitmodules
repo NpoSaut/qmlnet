@@ -1,3 +1,7 @@
 [submodule "build/scripts/Buildary"]
 	path = build/scripts/Buildary
 	url = https://github.com/pauldotknopf/dotnet-buildary.git
+[submodule "net-native-lib-loader"]
+	path = net-native-lib-loader
+	url = ../../pauldotknopf/net-native-lib-loader.git
+	branch = develop
