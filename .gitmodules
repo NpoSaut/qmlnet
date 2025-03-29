@@ -3,5 +3,5 @@
 	url = https://github.com/pauldotknopf/dotnet-buildary.git
 [submodule "net-native-lib-loader"]
 	path = net-native-lib-loader
-	url = ../../pauldotknopf/net-native-lib-loader.git
+	url = https://github.com/NpoSaut/net-native-lib-loader
 	branch = develop
