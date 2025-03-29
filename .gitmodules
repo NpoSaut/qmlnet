@@ -6,5 +6,5 @@
 	url = https://github.com/qmlnet/qmlnet-native
 [submodule "net-native-lib-loader"]
 	path = net-native-lib-loader
-	url = ../net-native-lib-loader.git
+	url = https://github.com/NpoSaut/net-native-lib-loader
 	branch = master
